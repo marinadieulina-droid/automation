@@ -5,11 +5,8 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  # Правильный триггер запуска по расписанию
   schedule:
-    # 01:00 по UTC — это ровно 04:00 утра по Московскому времени (UTC+3)
-    - cron: '0 1 * * *'
-  # Кнопка ручного запуска (чтобы плашка в интерфейсе вернулась!)
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -33,17 +30,32 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Force Chrome Headless Mode Compatibility
+    - name: Downgrade to Stable Chrome 126
       run: |
-        sudo rm -f /usr/bin/google-chrome
-        sudo bash -c 'cat > /usr/bin/google-chrome <<EOF
-        #!/bin/bash
-        exec /usr/bin/google-chrome-stable --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080 "\$@"
-        EOF'
+        # Полностью вырезаем багнутый Chrome 148 с сервера GitHub
+        sudo apt-get remove -y google-chrome-stable chromium-browser || true
+        
+        # Скачиваем официальную стабильную версию Chrome 126, где нет бага с Runtime.evaluate
+        wget -q https://storage.googleapis.com/chrome-for-testing-public/126.0.6478.126/linux64/chrome-linux64.zip
+        wget -q https://storage.googleapis.com/chrome-for-testing-public/126.0.6478.126/linux64/chromedriver-linux64.zip
+        
+        # Распаковываем браузер и драйвер
+        unzip -q chrome-linux64.zip
+        unzip -q chromedriver-linux64.zip
+        
+        # Делаем их системными, чтобы ваш Python-код автоматически брал именно их
+        sudo mv chrome-linux64/chrome /usr/bin/google-chrome
         sudo chmod +x /usr/bin/google-chrome
+        sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
+        sudo chmod +x /usr/bin/chromedriver
+        
+        # Чистим за собой мусор
+        rm -rf chrome-linux64* chromedriver-linux64*
 
-    - name: Run tests with Intercepted Browser
+    - name: Run tests with Downgraded Browser
       run: |
+        # Добавляем в пути, чтобы webdriver-manager или selenium сразу видели наш стабильный драйвер
+        export PATH=$PATH:/usr/bin
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
     - name: Install Allure Commandline
