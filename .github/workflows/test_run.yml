@@ -30,15 +30,12 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Setup Chrome Options via Environment Variables
+    - name: Run tests with Driver Lock
+      env:
+        # Принудительно заставляем webdriver-manager скачать стабильную 126-ю версию драйвера
+        WDM_CHROMEDRIVER_VERSION: "126.0.6478.126"
       run: |
-        # Мы не трогаем Chrome на сервере, но принудительно задаем флаги стабильности
-        # для всех запусков Selenium через глобальные переменные Linux
-        echo "CHROMEDRIVER_ARGUMENTS=--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu" >> $GITHUB_ENV
-        echo "SELENIUM_ARGUMENTS=--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu" >> $GITHUB_ENV
-
-    - name: Run tests
-      run: |
+        # Запускаем тесты в виртуальном дисплее в headless режиме
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
     - name: Install Allure Commandline
