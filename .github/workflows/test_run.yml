@@ -5,7 +5,6 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
-# Даем права на запись в репозиторий (это нужно, чтобы создать ветку gh-pages)
 permissions:
   contents: write
 
@@ -27,14 +26,17 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Run tests with Virtual Display (Xvfb)
+    - name: Run tests with Chrome Flags
+      env:
+        # Передаем конфигурацию для Chrome напрямую через переменные окружения Linux
+        # Это заставит Chrome на сервере запуститься в режиме без экрана и без ограничений памяти
+        MOZ_HEADLESS: 1
+        CHROME_OPTIONS: "--headless=new --no-sandbox --disable-dev-shm-usage"
       run: |
-        # xvfb-run создает виртуальный монитор в памяти сервера.
-        # Это позволит вашему Chrome запуститься без изменений в conftest.py!
+        # Используем xvfb как подушку безопасности + запускаем pytest
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest --alluredir=allure-results
 
     - name: Get Allure history
-      finalized: false
       continue-on-error: true
       uses: actions/checkout@v4
       with:
@@ -56,4 +58,4 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: allure-history
-        publish_branch: gh-pages # Вот тут экшен сам создаст эту ветку!
+        publish_branch: gh-pages
