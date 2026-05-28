@@ -1,4 +1,3 @@
-YAML
 name: UI Automation Tests
 
 on:
@@ -6,27 +5,11 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  # Добавляем запуск по расписанию
+  # Правильный триггер запуска по расписанию
   schedule:
-    # 01:00 по времени UTC — это ровно 04:00 утра по Московскому времени (UTC+3)
-    - cron: '0 4 * * *'
-  # Оставляем кнопку для ручного запуска в интерфейсе GitHub
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-
-
-on:
-  push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+    # 01:00 по UTC — это ровно 04:00 утра по Московскому времени (UTC+3)
+    - cron: '0 1 * * *'
+  # Кнопка ручного запуска (чтобы плашка в интерфейсе вернулась!)
   workflow_dispatch:
 
 permissions:
@@ -61,8 +44,6 @@ jobs:
 
     - name: Run tests with Intercepted Browser
       run: |
-        # Запускаем pytest. Теперь любой вызов Chrome из вашего Python-кода 
-        # пойдет через наш безопасный скрипт выше.
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
     - name: Install Allure Commandline
