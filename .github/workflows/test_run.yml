@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main", "master" ]
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 permissions:
@@ -30,31 +30,36 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Downgrade to Stable Chrome 126
+    - name: Downgrade to Stable Chrome 126 with Core Flags
       run: |
-        # Полностью вырезаем багнутый Chrome 148 с сервера GitHub
+        # Удаляем багнутый Chrome 148
         sudo apt-get remove -y google-chrome-stable chromium-browser || true
         
-        # Скачиваем официальную стабильную версию Chrome 126, где нет бага с Runtime.evaluate
+        # Скачиваем стабильный Chrome 126
         wget -q https://storage.googleapis.com/chrome-for-testing-public/126.0.6478.126/linux64/chrome-linux64.zip
         wget -q https://storage.googleapis.com/chrome-for-testing-public/126.0.6478.126/linux64/chromedriver-linux64.zip
         
-        # Распаковываем браузер и драйвер
         unzip -q chrome-linux64.zip
         unzip -q chromedriver-linux64.zip
         
-        # Делаем их системными, чтобы ваш Python-код автоматически брал именно их
-        sudo mv chrome-linux64/chrome /usr/bin/google-chrome
-        sudo chmod +x /usr/bin/google-chrome
+        # Переносим бинарники
+        sudo mv chrome-linux64/chrome /usr/bin/chrome-bin
+        sudo chmod +x /usr/bin/chrome-bin
         sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
         sudo chmod +x /usr/bin/chromedriver
         
-        # Чистим за собой мусор
+        # Создаем обертку для /usr/bin/google-chrome, которая принудительно
+        # добавит безопасные флаги для Linux-контейнера
+        sudo bash -c 'cat > /usr/bin/google-chrome <<EOF
+        #!/bin/bash
+        exec /usr/bin/chrome-bin --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222 "\$@"
+        EOF'
+        sudo chmod +x /usr/bin/google-chrome
+        
         rm -rf chrome-linux64* chromedriver-linux64*
 
-    - name: Run tests with Downgraded Browser
+    - name: Run tests with Compatible Browser
       run: |
-        # Добавляем в пути, чтобы webdriver-manager или selenium сразу видели наш стабильный драйвер
         export PATH=$PATH:/usr/bin
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
