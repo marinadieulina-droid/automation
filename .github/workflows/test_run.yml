@@ -1,4 +1,26 @@
+YAML
 name: UI Automation Tests
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  # Добавляем запуск по расписанию
+  schedule:
+    # 01:00 по времени UTC — это ровно 04:00 утра по Московскому времени (UTC+3)
+    - cron: '0 4 * * *'
+  # Оставляем кнопку для ручного запуска в интерфейсе GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+
 
 on:
   push:
@@ -28,19 +50,19 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Setup Chrome and ChromeDriver
+    - name: Force Chrome Headless Mode Compatibility
       run: |
-        # Устанавливаем стабильный Chrome и ChromeDriver одной версии,
-        # чтобы навсегда убрать ошибку Runtime.evaluate
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
+        sudo rm -f /usr/bin/google-chrome
+        sudo bash -c 'cat > /usr/bin/google-chrome <<EOF
+        #!/bin/bash
+        exec /usr/bin/google-chrome-stable --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080 "\$@"
+        EOF'
+        sudo chmod +x /usr/bin/google-chrome
 
-    - name: Run tests with Compatible Driver
-      env:
-        # Указываем Selenium использовать системный chromedriver, который мы только что установили
-        SELENIUM_CHROME_EXECUTABLE_PATH: /usr/bin/chromium-browser
+    - name: Run tests with Intercepted Browser
       run: |
-        # Флаг --tb=short покажет ошибку, даже если Allure будет пустой
+        # Запускаем pytest. Теперь любой вызов Chrome из вашего Python-кода 
+        # пойдет через наш безопасный скрипт выше.
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
     - name: Install Allure Commandline
