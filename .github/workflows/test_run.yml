@@ -28,21 +28,29 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Run tests with Clear Output
+    - name: Setup Chrome and ChromeDriver
       run: |
-        # Запуск тестов. Флаг --tb=line выведет ошибку одной строкой в консоль, если что-то упадет
-        xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=line --alluredir=allure-results
+        # Устанавливаем стабильный Chrome и ChromeDriver одной версии,
+        # чтобы навсегда убрать ошибку Runtime.evaluate
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+
+    - name: Run tests with Compatible Driver
+      env:
+        # Указываем Selenium использовать системный chromedriver, который мы только что установили
+        SELENIUM_CHROME_EXECUTABLE_PATH: /usr/bin/chromium-browser
+      run: |
+        # Флаг --tb=short покажет ошибку, даже если Allure будет пустой
+        xvfb-run --server-args="-screen 0 1920x1080x24" pytest -v --tb=short --alluredir=allure-results
 
     - name: Install Allure Commandline
       if: always()
       run: |
-        # Устанавливаем официальный Allure для сборки отчета
         sudo npm install -g allure-commandline --save-dev
 
     - name: Generate Allure Report
       if: always()
       run: |
-        # Собираем результаты в чистый HTML-сайт в папку allure-report
         allure generate allure-results --clean -o allure-report
 
     - name: Deploy Allure Report to GitHub Pages
@@ -50,5 +58,5 @@ jobs:
       if: always()
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: allure-report # Выкладываем готовый сайт напрямую
+        publish_dir: allure-report
         publish_branch: gh-pages
