@@ -28,10 +28,10 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Run tests with Clean Virtual Display
+    - name: Run tests with Max Window Size
       run: |
-        # Запускаем pytest через xvfb. Мы убрали лишние переменные окружения,
-        # которые вызывали конфликт версий Chrome и ошибку Runtime.evaluate
+        # xvfb-run создает большой экран, а флаг --alluredir собирает отчет.
+        # Если ваш conftest.py принимает кастомные аргументы, Chrome откроется в Full HD.
         xvfb-run --server-args="-screen 0 1920x1080x24" pytest --alluredir=allure-results
 
     - name: Get Allure history
